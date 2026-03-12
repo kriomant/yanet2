@@ -22,6 +22,6 @@ lib_dev_plain_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_device_plain=new_device_plain',
-    '-Wl,--export-dynamic-symbol=new_device_plain',
+    '-Wl,--export-dynamic',
   ],
 )

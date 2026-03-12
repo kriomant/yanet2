@@ -25,6 +25,6 @@ lib_acl_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_acl=new_module_acl',
-    '-Wl,--export-dynamic-symbol=new_module_acl',
+    '-Wl,--export-dynamic',
   ],
 )

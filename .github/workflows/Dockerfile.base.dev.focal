@@ -1,0 +1,136 @@
+FROM ubuntu:20.04
+
+# Image metadata
+LABEL maintainer="YANET Team" \
+    description="Development environment for YANET2 (Ubuntu Focal)" \
+    version="1.0"
+
+# Environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    GOCACHE=/tmp/gocache \
+    GOMODCACHE=/tmp/gomodcache \
+    PATH="/usr/local/go/bin:/root/.cargo/bin:${PATH}"
+
+# Tool versions
+ARG GO_VERSION=latest
+ARG PROTOC_GEN_GO_VERSION=latest
+ARG PROTOC_GEN_GO_GRPC_VERSION=latest
+
+RUN <<EOF
+#!/bin/bash
+set -euo pipefail
+
+# Function to install packages with error checking
+install_packages() {
+    if ! apt-get install -y "$@"; then
+        echo "Error installing packages: $*" >&2
+        exit 1
+    fi
+}
+
+# Update package lists
+apt-get update -y
+
+echo "Installing build tools..."
+install_packages \
+    python3-pip \
+    clang \
+    clang-format-12 \
+    clang-tidy-12 \
+    curl \
+    git \
+    make \
+    unzip
+
+echo "Installing newer meson version..."
+# Ubuntu 20.04 has meson 0.53.2, but we need >= 0.61
+pip3 install --no-cache-dir meson
+
+echo "Installing development dependencies..."
+install_packages \
+    python3-pyelftools \
+    python3-dev \
+    libnuma-dev \
+    libpcap-dev \
+    libyaml-dev
+
+echo "Installing newer protoc version..."
+# Ubuntu 20.04 has old protoc that doesn't support --experimental_allow_proto3_optional
+PROTOC_ZIP="protoc-28.3-linux-x86_64.zip"
+curl -fsSL "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/${PROTOC_ZIP}" -o "/tmp/${PROTOC_ZIP}"
+unzip -o "/tmp/${PROTOC_ZIP}" -d /usr/local bin/protoc
+unzip -o "/tmp/${PROTOC_ZIP}" -d /usr/local 'include/*'
+rm "/tmp/${PROTOC_ZIP}"
+
+echo "Installing Debian packaging tools..."
+install_packages \
+    dpkg-dev \
+    debhelper \
+    lintian \
+    devscripts \
+    fakeroot \
+    build-essential \
+    dh-make \
+    equivs \
+    pbuilder \
+    quilt
+
+echo "Creating dummy meson package for build dependencies..."
+# Create a dummy package to satisfy meson (>= 0.61) dependency in debian/control
+cd /tmp
+cat > meson-equivs << 'EOT'
+Package: meson
+Version: 0.61.0
+Maintainer: YANET Team <team@yanet.com>
+Architecture: all
+Description: Dummy meson package for build dependencies
+ This is a dummy package to satisfy the meson build dependency.
+ The actual meson is installed via pip3.
+EOT
+equivs-build meson-equivs
+dpkg -i meson_0.61.0_all.deb
+rm meson_0.61.0_all.deb meson-equivs
+cd -
+
+echo "Installing debugging tools..."
+install_packages \
+    gdb \
+    lldb \
+    lcov
+
+echo "Installing Go..."
+# Download and install Go from official source (Ubuntu package is outdated)
+GO_TARBALL="go1.24.13.linux-amd64.tar.gz"
+curl -fsSL "https://go.dev/dl/${GO_TARBALL}" -o "/tmp/${GO_TARBALL}"
+rm -rf /usr/local/go
+tar -C /usr/local -xzf "/tmp/${GO_TARBALL}"
+rm "/tmp/${GO_TARBALL}"
+
+echo "Installing Go modules..."
+GOBIN=/usr/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION}
+GOBIN=/usr/bin go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}
+
+echo "Install rust..."
+# Install rustup via official script
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+export PATH="$HOME/.cargo/bin:$PATH"
+# fix "rustup is not installed at '/root/.cargo'" error
+rustup set auto-self-update disable
+rustup install stable
+
+echo "Install just (task runner)..."
+# Install just via cargo since it's not available in Ubuntu 20.04
+cargo install just
+
+# Clean up caches
+echo "Cleaning up caches..."
+apt-get clean
+rm -rf /var/lib/apt/lists/*
+
+# Create cache directories
+mkdir -p /tmp/gocache /tmp/gomodcache
+chmod 777 /tmp/gocache /tmp/gomodcache
+EOF
+
+# Default working directory
+WORKDIR /yanet2

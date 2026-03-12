@@ -23,6 +23,6 @@ lib_route_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_route=new_module_route',
-    '-Wl,--export-dynamic-symbol=new_module_route',
+    '-Wl,--export-dynamic',
   ],
 )

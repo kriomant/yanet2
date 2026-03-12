@@ -13,12 +13,15 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Compatibility for older C compilers (Ubuntu 20.04) */
+#define MAYBE_UNUSED __attribute__((unused))
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void
 bucket_basic() {
 	alignas(64) uint8_t bucket[4096];
-	[[maybe_unused]] void *bucket_ptr = bucket;
+	MAYBE_UNUSED void *bucket_ptr = bucket;
 	__TTLMAP_BUCKET_INIT(bucket_ptr, size_t, size_t);
 	int res;
 
@@ -164,7 +167,7 @@ thread_func(void *bucket) {
 void
 bucket_multithread() {
 	alignas(64) uint8_t bucket[4096];
-	[[maybe_unused]] void *bucket_ptr = bucket;
+	MAYBE_UNUSED void *bucket_ptr = bucket;
 	__TTLMAP_BUCKET_INIT(bucket_ptr, size_t, size_t);
 	size_t key = 0;
 	size_t *value;
@@ -213,7 +216,7 @@ bucket_big_alignment() {
 	} __rte_cache_aligned value_t;
 
 	alignas(64) uint8_t bucket[4096];
-	[[maybe_unused]] void *bucket_ptr = bucket;
+	MAYBE_UNUSED void *bucket_ptr = bucket;
 	__TTLMAP_BUCKET_INIT(bucket_ptr, key_t, value_t);
 
 	key_t key = {1};

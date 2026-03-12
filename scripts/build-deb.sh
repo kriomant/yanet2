@@ -13,7 +13,7 @@ apt-get update
 
 echo "Current PATH during build: $PATH" > build-path.log
 # Preserve environment variables for cargo (order matters in dpkg-buildpackage)
-echo y | debuild --preserve-envvar=PATH -us -uc 2>&1 | tee build.log 
+echo y | debuild --preserve-envvar=PATH -us -uc -tc 2>&1 | tee build.log
 
 mkdir -p outdeb
 dcmd cp ../*.changes outdeb/

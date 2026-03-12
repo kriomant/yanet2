@@ -24,6 +24,6 @@ lib_route_mpls_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_route_mpls=new_module_route_mpls',
-    '-Wl,--export-dynamic-symbol=new_module_route_mpls',
+    '-Wl,--export-dynamic',
   ],
 )

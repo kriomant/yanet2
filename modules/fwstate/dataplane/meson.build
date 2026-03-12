@@ -23,6 +23,6 @@ lib_fwstate_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_fwstate=new_module_fwstate',
-    '-Wl,--export-dynamic-symbol=new_module_fwstate',
+    '-Wl,--export-dynamic',
   ],
 )

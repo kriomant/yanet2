@@ -22,6 +22,6 @@ lib_dscp_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_dscp=new_module_dscp',
-    '-Wl,--export-dynamic-symbol=new_module_dscp',
+    '-Wl,--export-dynamic',
   ],
 )

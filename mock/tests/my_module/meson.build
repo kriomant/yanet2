@@ -54,7 +54,7 @@ lib_my_module_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_balancer=new_module_balancer',
-    '-Wl,--export-dynamic-symbol=new_module_balancer'
+    '-Wl,--export-dynamic'
   ],
 )
 

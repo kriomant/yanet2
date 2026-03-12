@@ -23,6 +23,6 @@ lib_pdump_dp_dep = declare_dependency(
   link_args: [
     '-Wl,--defsym',
     '-Wl,new_module_pdump=new_module_pdump',
-    '-Wl,--export-dynamic-symbol=new_module_pdump',
+    '-Wl,--export-dynamic',
   ],
 )

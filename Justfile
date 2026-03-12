@@ -107,6 +107,19 @@ dbuild-cnt:
         --cache-from {{ TAG }} \
         -t {{ TAG }} .
 
+# Build development Docker image (Ubuntu Focal)
+dbuild-cnt-focal:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd .github/workflows && \
+    BUILDKIT_PROGRESS=plain DOCKER_BUILDKIT=1 \
+    docker build \
+        --platform linux/amd64 \
+        -f Dockerfile.base.dev.focal \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from {{ TAG }}-focal \
+        -t {{ TAG }}-focal .
+
 # Common Docker run configuration
 _docker_run IT *COMMAND:
     #!/usr/bin/env bash
@@ -181,6 +194,19 @@ dcli:
 # Build deb packages for all main components inside Docker container (unified with CI)
 ddeb:
     @just _docker_run -q "./scripts/build-deb.sh"
+
+# Build deb packages for all main components inside Docker container (Ubuntu Focal)
+ddeb-focal:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    docker run -q --rm \
+        --platform linux/amd64 \
+        --network=host \
+        -v {{ ROOT_DIR }}:/yanet2 \
+        -v {{ DOCKER_CACHE_DIR }}/gomodcache:/tmp/gomodcache:rw \
+        -v {{ DOCKER_CACHE_DIR }}/gocache:/tmp/gocache:rw \
+        {{ TAG }}-focal \
+        sh -c 'cd /yanet2 && git config --global --add safe.directory /yanet2 && ./scripts/build-deb.sh'
 
 # Run fuzzing in Docker
 # Usage: just dfuzz [MODULE]

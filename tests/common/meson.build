@@ -51,7 +51,7 @@ rcu_test = executable(
   ['rcu_test.c'],
   c_args: yanet_test_c_args,
   link_args: yanet_link_args,
-  dependencies: dependencies
+  dependencies: dependencies + [dependency('threads')]
 )
 test('rcu', rcu_test, suite: ['common'])
 
@@ -60,7 +60,7 @@ executable(
   ['rcu_bench.c'],
   c_args: yanet_c_args,
   link_args: yanet_link_args,
-  dependencies: dependencies
+  dependencies: dependencies + [dependency('threads')]
 )
 
 balloc_test = executable(

@@ -8,11 +8,13 @@ deps = [
   libdpdk_dep,
 ]
 
+rt_dep = cc.find_library('rt', required: false)
+
 compiler = executable('compiler',
     ['compiler.c'],
     c_args: yanet_test_c_args,
     link_args: yanet_link_args,
-    dependencies: deps,
+    dependencies: deps + [rt_dep],
     include_directories: yanet_rootdir,
     link_language: 'c'
 )
@@ -21,7 +23,7 @@ filter = executable('filter',
     ['filter.c'],
     c_args: yanet_test_c_args,
     link_args: yanet_link_args,
-    dependencies: deps,
+    dependencies: deps + [rt_dep],
     include_directories: yanet_rootdir,
     link_language: 'c'
 )
