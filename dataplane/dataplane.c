@@ -395,9 +395,9 @@ dataplane_init(
 	if (ftruncate(mem_fd, storage_size)) {
 		close(mem_fd);
 		LOG(ERROR,
-		    "failed to truncate storage at %s to %ld Mib: %s",
+		    "failed to truncate storage at %s to %ld bytes: %s",
 		    config->storage,
-		    storage_size,
+		    (uint64_t)storage_size,
 		    strerror(errno));
 		return -1;
 	}
