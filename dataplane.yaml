@@ -1,13 +1,16 @@
 dataplane:
   storage: /dev/hugepages/yanet
-  dpdk_memory: 1024
+  # Memory sizes accept a unit suffix: b, k/kb, m/mb, g/gb, t/tb, binary and
+  # case-insensitive. Without a suffix dpdk_memory is MiB, which is also its
+  # smallest unit, while the instance sizes are bytes.
+  dpdk_memory: 1g
   # Maximum self-redirects (recirculations) per packet lineage, shared by the
   # input and output routes; 4..256, default 64. Packets exceeding the budget
   # are dropped and counted in input_recirc_drop / output_recirc_drop.
   packet_recirc_limit: 64
   instances:
-    - dp_memory: 1073741824
-      cp_memory: 2147483648
+    - dp_memory: 1g
+      cp_memory: 2g
       numa_id: 0
   devices:
     - port_name: 01:00.0
