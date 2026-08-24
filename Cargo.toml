@@ -33,6 +33,7 @@ members = [
     "modules/mirror/cli",
     "modules/nat64/cli",
     "modules/pdump/cli",
+    "modules/portfwd/cli",
     "modules/route-mpls/cli",
     "modules/route/cli/route",
     "devices/plain/cli",

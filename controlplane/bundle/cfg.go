@@ -13,6 +13,7 @@ import (
 	mirror "github.com/yanet-platform/yanet2/modules/mirror/controlplane"
 	nat64 "github.com/yanet-platform/yanet2/modules/nat64/controlplane"
 	pdump "github.com/yanet-platform/yanet2/modules/pdump/controlplane"
+	portfwd "github.com/yanet-platform/yanet2/modules/portfwd/controlplane"
 	route_mpls "github.com/yanet-platform/yanet2/modules/route-mpls/controlplane"
 	route "github.com/yanet-platform/yanet2/modules/route/controlplane"
 )
@@ -35,6 +36,8 @@ type ModulesConfig struct {
 	NAT64 xcfg.Optional[nat64.Config] `yaml:"nat64"`
 	// Pdump is the configuration for the packet dump module.
 	Pdump xcfg.Optional[pdump.Config] `yaml:"pdump"`
+	// Portfwd is the configuration for the portfwd module.
+	Portfwd xcfg.Optional[portfwd.Config] `yaml:"portfwd"`
 	// ACL is the configuration for the acl module.
 	ACL xcfg.Optional[acl.Config] `yaml:"acl"`
 	// Blackhole is the configuration for the blackhole module.

@@ -41,6 +41,7 @@ CLI_MODULES := \
 	dscp \
 	fwstate \
 	mirror \
+	portfwd \
 	route \
 	route-mpls \
 	forward \
@@ -65,6 +66,7 @@ PUBLIC_MODULES := \
 	mirror \
 	nat64 \
 	pdump \
+	portfwd \
 	route \
 	route-mpls
 

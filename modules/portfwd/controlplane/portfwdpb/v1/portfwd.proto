@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package modules.portfwd.controlplane.portfwdpb.v1;
+
+option go_package = "github.com/yanet-platform/yanet2/modules/portfwd/controlplane/portfwdpb/v1;portfwdpb";
+
+// PortfwdService is a controlplane service for the portfwd module.
+service PortfwdService {
+  // ListConfigs returns all portfwd module configurations of all
+  // dataplane instances.
+  rpc ListConfigs(ListConfigsRequest) returns (ListConfigsResponse);
+
+  // ShowConfig returns the current configuration for the portfwd module.
+  rpc ShowConfig(ShowConfigRequest) returns (ShowConfigResponse);
+
+  // UpdateConfig creates or replaces the named portfwd config and publishes
+  // it to the dataplane.
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
+
+  // DeleteConfig removes the named portfwd config when it is no longer
+  // referenced by any pipeline.
+  rpc DeleteConfig(DeleteConfigRequest) returns (DeleteConfigResponse);
+}
+
+// ForwardMode selects which pipeline of the target device diverted packets
+// re-enter.
+enum ForwardMode {
+  // NONE leaves the diversion unconfigured, which UpdateConfig rejects.
+  NONE = 0;
+  // IN re-enters the input pipeline of the target device.
+  IN = 1;
+  // OUT re-enters the output pipeline of the target device.
+  OUT = 2;
+}
+
+// Config is the runtime configuration of a single portfwd module instance.
+message Config {
+  string name = 1;
+  // TCP and UDP source ports that take the alternative exit. Duplicates
+  // collapse and the order carries no meaning.
+  repeated uint32 ports = 2;
+  // Name of the device that matching packets are diverted to.
+  string target = 3;
+  ForwardMode mode = 4;
+}
+
+message ListConfigsRequest {}
+
+// ListConfigsResponse contains existing configurations.
+message ListConfigsResponse { repeated string configs = 1; }
+
+// ShowConfigRequest retrieves the runtime configuration for the portfwd
+// module.
+message ShowConfigRequest { string name = 1; }
+
+// ShowConfigResponse contains the configuration details of the portfwd
+// module.
+message ShowConfigResponse { Config config = 1; }
+
+// UpdateConfigRequest creates or replaces the named config.
+message UpdateConfigRequest {
+  string name = 1;
+  repeated uint32 ports = 2;
+  string target = 3;
+  ForwardMode mode = 4;
+}
+
+// UpdateConfigResponse is the response to an UpdateConfig call.
+message UpdateConfigResponse {}
+
+// DeleteConfigRequest names the config to delete.
+message DeleteConfigRequest { string name = 1; }
+
+// DeleteConfigResponse is the response to a DeleteConfig call.
+message DeleteConfigResponse { bool deleted = 1; }

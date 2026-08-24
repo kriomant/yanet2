@@ -20,6 +20,7 @@ import (
 	mirror "github.com/yanet-platform/yanet2/modules/mirror/controlplane"
 	nat64 "github.com/yanet-platform/yanet2/modules/nat64/controlplane"
 	pdump "github.com/yanet-platform/yanet2/modules/pdump/controlplane"
+	portfwd "github.com/yanet-platform/yanet2/modules/portfwd/controlplane"
 	route_mpls "github.com/yanet-platform/yanet2/modules/route-mpls/controlplane"
 	route "github.com/yanet-platform/yanet2/modules/route/controlplane"
 	_ "github.com/yanet-platform/yanet2/operators/route/operatorpb/v1"
@@ -144,6 +145,13 @@ func buildServices(
 			Configured: modulesCfg.Pdump.Unwrap() != nil,
 			New: func() (gateway.Service, error) {
 				return pdump.NewPdumpModule(modulesCfg.Pdump.Unwrap(), pdump.WithLog(log))
+			},
+		},
+		{
+			Name:       "portfwd module",
+			Configured: modulesCfg.Portfwd.Unwrap() != nil,
+			New: func() (gateway.Service, error) {
+				return portfwd.NewPortfwdModule(modulesCfg.Portfwd.Unwrap(), portfwd.WithLog(log))
 			},
 		},
 		{

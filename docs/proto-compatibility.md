@@ -22,6 +22,7 @@ The following versioned package families are covered by the breaking gate.
 - `modules.fwstate.controlplane.fwstatepb.v1`
 - `modules.nat64.controlplane.nat64pb.v1`
 - `modules.pdump.controlplane.pdumppb.v1`
+- `modules.portfwd.controlplane.portfwdpb.v1`
 - `modules.route.controlplane.routepb.v1`
 - `modules.route_mpls.controlplane.routemplspb.v1` (directory `route-mpls`, package `route_mpls` — see Exclusions)
 
