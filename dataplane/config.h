@@ -9,10 +9,7 @@
 
 struct dataplane_instance_config {
 	uint16_t numa_idx;
-
-	// Sizes of the instance storage halves, in bytes. A configuration
-	// file may spell them with a unit suffix ("24m"), and a bare number
-	// is bytes.
+	// Bytes, the file may add a KiB, MiB, GiB or TiB unit.
 	uint64_t dp_memory;
 	uint64_t cp_memory;
 };
@@ -47,10 +44,6 @@ struct dataplane_connection_config {
 
 struct dataplane_config {
 	char storage[80];
-
-	// Memory passed to DPDK EAL via -m, in MiB. Unlike the instance
-	// sizes, a bare number in a configuration file is MiB here, and only
-	// suffixes of at least that granularity are accepted.
 	uint64_t dpdk_memory;
 	uint16_t packet_recirc_limit;
 

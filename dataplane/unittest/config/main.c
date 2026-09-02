@@ -173,153 +173,6 @@ test_numeric_field_ranges(void) {
 	}
 }
 
-struct memory_case {
-	const char *yaml_format;
-	const char *value;
-	uint64_t expected;
-};
-
-static void
-test_memory_size_suffixes(void) {
-	const char dp_yaml[] =
-		"dataplane:\n  instances:\n    - dp_memory: %s\n";
-	const char dpdk_yaml[] = "dataplane:\n  dpdk_memory: %s\n";
-
-	const struct memory_case cases[] = {
-		// A bare number keeps the historical unit of the field.
-		{dp_yaml, "123", 123},
-		{dp_yaml, "16b", 16},
-		{dp_yaml, "4k", 4096},
-		{dp_yaml, "1m", 1048576},
-		{dp_yaml, "1M", 1048576},
-		{dp_yaml, "1MB", 1048576},
-		{dp_yaml, "\"1 mb\"", 1048576},
-		{dp_yaml, "2g", 2147483648},
-		{dpdk_yaml, "1024", 1024},
-		{dpdk_yaml, "1g", 1024},
-		{dpdk_yaml, "2G", 2048},
-		{dpdk_yaml, "1t", 1048576},
-	};
-
-	char yaml[512];
-	for (size_t case_idx = 0; case_idx < sizeof(cases) / sizeof(cases[0]);
-	     ++case_idx) {
-		int length = snprintf(
-			yaml,
-			sizeof(yaml),
-			cases[case_idx].yaml_format,
-			cases[case_idx].value
-		);
-		assert(length >= 0 && (size_t)length < sizeof(yaml));
-
-		struct dataplane_config *config = NULL;
-		int rc = parse_yaml(yaml, &config);
-		assert(rc == 0);
-
-		uint64_t parsed = cases[case_idx].yaml_format == dp_yaml
-					  ? config->instances[0].dp_memory
-					  : config->dpdk_memory;
-		assert(parsed == cases[case_idx].expected);
-
-		dataplane_config_free(config);
-	}
-}
-
-static void
-test_memory_size_rejects_invalid(void) {
-	const char *const formats[] = {
-		"dataplane:\n  dpdk_memory: %s\n",
-		"dataplane:\n  instances:\n    - dp_memory: %s\n",
-		"dataplane:\n  instances:\n    - cp_memory: %s\n",
-	};
-	const char *const values[] = {
-		"1x",
-		"1mib",
-		"m",
-		"1.5g",
-		"\"1 2\"",
-		"\"1kb junk\"",
-		// Capital prefix with lower case "b" spells bits, not bytes.
-		"1Kb",
-		"1Mb",
-	};
-
-	char yaml[512];
-	for (size_t format_idx = 0;
-	     format_idx < sizeof(formats) / sizeof(formats[0]);
-	     ++format_idx) {
-		for (size_t value_idx = 0;
-		     value_idx < sizeof(values) / sizeof(values[0]);
-		     ++value_idx) {
-			int length = snprintf(
-				yaml,
-				sizeof(yaml),
-				formats[format_idx],
-				values[value_idx]
-			);
-			assert(length >= 0 && (size_t)length < sizeof(yaml));
-
-			struct dataplane_config *config = NULL;
-			int rc = parse_yaml(yaml, &config);
-			assert(rc == -1);
-			assert(config == NULL);
-		}
-	}
-}
-
-static void
-test_memory_size_rejects_suffix_overflow(void) {
-	const char *const yamls[] = {
-		"dataplane:\n  instances:\n    - dp_memory: 17179869184g\n",
-		"dataplane:\n  instances:\n    - cp_memory: 16777216t\n",
-		"dataplane:\n  dpdk_memory: 18446744073709551615g\n",
-	};
-
-	for (size_t yaml_idx = 0; yaml_idx < sizeof(yamls) / sizeof(yamls[0]);
-	     ++yaml_idx) {
-		struct dataplane_config *config = NULL;
-		int rc = parse_yaml(yamls[yaml_idx], &config);
-		assert(rc == -1);
-		assert(config == NULL);
-	}
-}
-
-static void
-test_memory_size_rejects_sub_granularity(void) {
-	const char *const values[] = {"1b", "512k", "1kb"};
-
-	char yaml[512];
-	for (size_t value_idx = 0;
-	     value_idx < sizeof(values) / sizeof(values[0]);
-	     ++value_idx) {
-		int length = snprintf(
-			yaml,
-			sizeof(yaml),
-			"dataplane:\n  dpdk_memory: %s\n",
-			values[value_idx]
-		);
-		assert(length >= 0 && (size_t)length < sizeof(yaml));
-
-		struct dataplane_config *config = NULL;
-		int rc = parse_yaml(yaml, &config);
-		assert(rc == -1);
-		assert(config == NULL);
-
-		// The very same value is expressible for a byte-sized field.
-		length = snprintf(
-			yaml,
-			sizeof(yaml),
-			"dataplane:\n  instances:\n    - dp_memory: %s\n",
-			values[value_idx]
-		);
-		assert(length >= 0 && (size_t)length < sizeof(yaml));
-
-		rc = parse_yaml(yaml, &config);
-		assert(rc == 0);
-		dataplane_config_free(config);
-	}
-}
-
 static void
 test_resolve_connections_unknown_device(void) {
 	const char yaml[] = "dataplane:\n"
@@ -390,14 +243,11 @@ test_valid_config(void) {
 	int rc = dataplane_config_init(f, &config);
 	assert(rc == 0);
 
-	assert(config->dpdk_memory == 1024);
 	assert(config->packet_recirc_limit == 37);
-
-	assert(config->instance_count == 4);
+	assert(config->instance_count == 3);
 	check_instance(config->instances, 0, 1024, 2048);
 	check_instance(config->instances + 1, 1, 512, 128);
 	check_instance(config->instances + 2, 0, 123, 124);
-	check_instance(config->instances + 3, 1, 4096, 2097152);
 
 	assert(config->connection_count == 2);
 	assert(config->connections[0].src_device_id == 0);
@@ -419,10 +269,6 @@ main(int argc, char **argv) {
 	test_numeric_field_maximum_values();
 	test_packet_recirc_limit_default_and_bounds();
 	test_numeric_field_ranges();
-	test_memory_size_suffixes();
-	test_memory_size_rejects_invalid();
-	test_memory_size_rejects_suffix_overflow();
-	test_memory_size_rejects_sub_granularity();
 	test_resolve_connections_unknown_device();
 	test_resolve_connections_duplicate_device();
 	test_resolve_connections_empty_device_name();

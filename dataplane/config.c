@@ -71,191 +71,45 @@ parse_unsigned(
 	return 0;
 }
 
-struct size_unit {
-	const char *name;
-	uint64_t multiplier;
-};
-
-// Spellings are a subset of the Go datasize package used by module configs,
-// so a value accepted here means the same thing there. Prefixes are binary.
-static const struct size_unit size_units[] = {
-	{"b", 1ull},
-	{"k", 1ull << 10},
-	{"kb", 1ull << 10},
-	{"m", 1ull << 20},
-	{"mb", 1ull << 20},
-	{"g", 1ull << 30},
-	{"gb", 1ull << 30},
-	{"t", 1ull << 40},
-	{"tb", 1ull << 40},
-};
-
-// How a memory-size field of the configuration file is measured.
-//
-// The scale is the unit a value without a suffix is measured in, which keeps
-// the historical meaning of bare numbers. Since every multiplier is a power of
-// 1024, it doubles as the smallest suffix the field can express exactly.
-struct memory_field {
-	uint64_t scale;
-	uint64_t max;
-};
-
-static const struct memory_field dpdk_memory_field = {
-	.scale = 1ull << 20,
-	.max = UINT64_MAX,
-};
-
-static const struct memory_field instance_memory_field = {
-	.scale = 1ull,
-	.max = UINT64_MAX,
-};
-
-static void
-print_allowed_units(const struct memory_field *field) {
-	const char *separator = "";
-	for (size_t unit_idx = 0;
-	     unit_idx < sizeof(size_units) / sizeof(size_units[0]);
-	     ++unit_idx) {
-		if (size_units[unit_idx].multiplier < field->scale) {
-			continue;
-		}
-		fprintf(stderr, "%s%s", separator, size_units[unit_idx].name);
-		separator = ", ";
-	}
-}
-
-// Spelling of the unit a value without a suffix is measured in.
-static const char *
-scale_unit_name(const struct memory_field *field) {
-	for (size_t unit_idx = 0;
-	     unit_idx < sizeof(size_units) / sizeof(size_units[0]);
-	     ++unit_idx) {
-		if (size_units[unit_idx].multiplier == field->scale) {
-			return size_units[unit_idx].name;
-		}
-	}
-	return "b";
-}
-
-static int
-units_equal(const char *unit, size_t length, const char *name) {
-	if (strlen(name) != length) {
-		return 0;
-	}
-	for (size_t idx = 0; idx < length; ++idx) {
-		if (tolower((unsigned char)unit[idx]) != name[idx]) {
-			return 0;
-		}
-	}
-	return 1;
-}
-
-static const struct size_unit *
-lookup_unit(const char *unit, size_t length) {
-	// "Kb" and its kin spell bits in the datasize package, which rejects
-	// them rather than guessing. Reject them here too, so that every value
-	// this parser accepts keeps its meaning in a Go config.
-	if (length == 2 && isupper((unsigned char)unit[0]) && unit[1] == 'b') {
-		return NULL;
-	}
-
-	for (size_t idx = 0; idx < sizeof(size_units) / sizeof(size_units[0]);
-	     ++idx) {
-		if (units_equal(unit, length, size_units[idx].name)) {
-			return size_units + idx;
-		}
-	}
-	return NULL;
-}
-
+// A memory size is bytes with an optional binary unit: "1073741824",
+// "1 GiB" and "1GiB" spell the same size.
 static int
 parse_memory_size(
-	const char *name,
-	const struct memory_field *field,
-	const char *value,
-	size_t length,
-	uint64_t *result
+	const char *field, const char *value, size_t length, uint64_t *result
 ) {
-	const char *cursor = value;
-	const char *end = value + length;
-	while (cursor < end && isspace((unsigned char)*cursor)) {
-		++cursor;
+	static const char *const units[] = {"KiB", "MiB", "GiB", "TiB"};
+
+	unsigned shift = 0;
+	size_t number_length = length;
+	for (size_t idx = 0; idx < sizeof(units) / sizeof(units[0]); ++idx) {
+		if (length >= 3 && !memcmp(value + length - 3, units[idx], 3)) {
+			shift = 10 * (unsigned)(idx + 1);
+			number_length = length - 3;
+			break;
+		}
+	}
+	while (shift != 0 && number_length > 0 &&
+	       isspace((unsigned char)value[number_length - 1])) {
+		--number_length;
 	}
 
-	const char *digits = cursor;
-	while (cursor < end && isdigit((unsigned char)*cursor)) {
-		++cursor;
-	}
-	if (cursor == digits) {
-		goto invalid;
-	}
-
-	char *digits_end = NULL;
+	char *end = NULL;
 	errno = 0;
-	uintmax_t parsed = strtoumax(digits, &digits_end, 10);
-	if (digits_end != cursor || errno == ERANGE) {
-		goto invalid;
-	}
-
-	const char *unit = cursor;
-	while (unit < end && isspace((unsigned char)*unit)) {
-		++unit;
-	}
-	const char *unit_end = end;
-	while (unit_end > unit && isspace((unsigned char)unit_end[-1])) {
-		--unit_end;
-	}
-
-	uint64_t multiplier = field->scale;
-	if (unit != unit_end) {
-		const struct size_unit *found =
-			lookup_unit(unit, (size_t)(unit_end - unit));
-		if (found == NULL) {
-			goto invalid;
-		}
-		if (found->multiplier < field->scale) {
-			fprintf(stderr, "invalid %s value ", name);
-			print_scalar(value, length);
-			fprintf(stderr,
-				": unit '%s' is below the granularity of the "
-				"field (allowed: ",
-				found->name);
-			print_allowed_units(field);
-			fprintf(stderr, ")\n");
-			return -1;
-		}
-		multiplier = found->multiplier;
-	}
-
-	// Scaling in stored units keeps every intermediate value in range,
-	// since the byte count a suffix denotes may itself overflow the field.
-	// The granularity check above is what makes the factor nonzero.
-	uint64_t factor = multiplier / field->scale;
-	if (parsed > (uintmax_t)(field->max / factor)) {
-		fprintf(stderr, "invalid %s value ", name);
+	uintmax_t number = strtoumax(value, &end, 10);
+	if (number_length == 0 || !isdigit((unsigned char)*value) ||
+	    end != value + number_length || errno == ERANGE ||
+	    number > (UINT64_MAX >> shift)) {
+		fprintf(stderr, "invalid %s value ", field);
 		print_scalar(value, length);
 		fprintf(stderr,
-			": memory size exceeds the maximum of %" PRIu64
-			" bytes\n",
-			field->max);
+			" (length %zu): expected bytes with an optional "
+			"KiB, MiB, GiB or TiB unit\n",
+			length);
 		return -1;
 	}
 
-	*result = (uint64_t)parsed * factor;
+	*result = (uint64_t)number << shift;
 	return 0;
-
-invalid:
-	fprintf(stderr, "invalid %s value ", name);
-	print_scalar(value, length);
-	fprintf(stderr,
-		" (length %zu): expected an unsigned integer with an optional "
-		"unit (",
-		length);
-	print_allowed_units(field);
-	fprintf(stderr,
-		"); a value without a unit is in '%s'\n",
-		scale_unit_name(field));
-	return -1;
 }
 
 static int
@@ -404,11 +258,12 @@ dataplane_config_init(FILE *file, struct dataplane_config **config) {
 				state = state_dataplane;
 				break;
 			case state_dataplane_dpdk_memory:
-				if (parse_memory_size(
+				if (parse_unsigned(
 					    "dataplane.dpdk_memory",
-					    &dpdk_memory_field,
 					    start,
 					    scalar_length,
+					    0,
+					    UINT64_MAX,
 					    &dataplane->dpdk_memory
 				    ) != 0) {
 					goto error;
@@ -478,7 +333,6 @@ dataplane_config_init(FILE *file, struct dataplane_config **config) {
 			case state_instance_dp_memory:
 				if (parse_memory_size(
 					    "instances.dp_memory",
-					    &instance_memory_field,
 					    start,
 					    scalar_length,
 					    &instance->dp_memory
@@ -490,7 +344,6 @@ dataplane_config_init(FILE *file, struct dataplane_config **config) {
 			case state_instance_cp_memory:
 				if (parse_memory_size(
 					    "instances.cp_memory",
-					    &instance_memory_field,
 					    start,
 					    scalar_length,
 					    &instance->cp_memory

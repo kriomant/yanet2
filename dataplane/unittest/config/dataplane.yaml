@@ -1,6 +1,6 @@
 dataplane:
   storage: /dev/hugepages/yanet
-  dpdk_memory: 1g
+  dpdk_memory: 1024
   packet_recirc_limit: 37
   instances:
     - numa_id: 0
@@ -12,9 +12,6 @@ dataplane:
     - cp_memory: 124
       numa_id: 0
       dp_memory: 123
-    - numa_id: 1
-      cp_memory: 2m
-      dp_memory: 4k
   devices:
     - port_name: 07:00.0
       mtu: 5000
